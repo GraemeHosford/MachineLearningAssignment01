@@ -55,12 +55,11 @@ def count_training_words(training_reviews: pd.Series, min_word_length, min_word_
 
 
 def count_word_in_review_frequency(review_list,  word_list):
-    word_set = set(word_list)
     word_freq_dict = dict()
 
     for review in review_list:
         for word in review.split():
-            if word in word_set:
+            if word in word_list:
                 if word in word_freq_dict.keys():
                     word_freq_dict[word] += 1
                 else:
@@ -73,11 +72,13 @@ def main():
     review_train_data, label_train_data, review_test_data, label_test_data = split_data()
     review_train_data, word_list = count_training_words(review_train_data, 3, 400)
 
+    word_set = set(word_list)
+
     positive_training_reviews = review_train_data[label_train_data == "positive"]
     negative_training_reviews = review_train_data[label_train_data == "negative"]
 
-    positive_word_freq_dict = count_word_in_review_frequency(positive_training_reviews, word_list)
-    negative_word_freq_dict = count_word_in_review_frequency(negative_training_reviews, word_list)
+    positive_word_freq_dict = count_word_in_review_frequency(positive_training_reviews, word_set)
+    negative_word_freq_dict = count_word_in_review_frequency(negative_training_reviews, word_set)
 
 
 main()
