@@ -66,12 +66,16 @@ def count_word_in_review_frequency(review_list: pd.Series, word_set: set) -> Cou
     return word_freq_dict
 
 
-def calculate_likelihood(word_freq: Counter, data_set: pd.Series) -> dict:
+def calculate_likelihood(word_freq: Counter) -> dict:
     word_likelihood = dict()
     smoothing = 1
 
+    total = 0
+    for value in word_freq.values():
+        total += value
+
     for word in word_freq.keys():
-        word_likelihood[word] = (word_freq[word] + smoothing) / (len(data_set) + smoothing)
+        word_likelihood[word] = (word_freq[word] + smoothing) / (total + smoothing)
 
     return word_likelihood
 
@@ -93,11 +97,14 @@ def main():
     positive_word_freq_dict = count_word_in_review_frequency(positive_training_reviews, word_set)
     negative_word_freq_dict = count_word_in_review_frequency(negative_training_reviews, word_set)
 
-    positive_likelihood = calculate_likelihood(positive_word_freq_dict, positive_training_reviews)
-    negative_likelihood = calculate_likelihood(negative_word_freq_dict, negative_training_reviews)
+    positive_likelihood = calculate_likelihood(positive_word_freq_dict)
+    negative_likelihood = calculate_likelihood(negative_word_freq_dict)
 
     positive_prior = calculate_priors(review_train_data, positive_training_reviews)
     negative_prior = calculate_priors(review_train_data, negative_training_reviews)
+
+    print(positive_likelihood)
+    print(negative_likelihood)
 
     print(positive_prior)
     print(negative_prior)
