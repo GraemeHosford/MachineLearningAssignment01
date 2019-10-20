@@ -1,6 +1,7 @@
 # Name: Graeme Hosford
 # Student ID: R00147327
 
+import math
 from collections import Counter
 
 import pandas as pd
@@ -33,15 +34,12 @@ def clean_data(review_data: pd.Series) -> pd.Series:
 
 
 def count_training_words(training_reviews: pd.Series, min_word_length, min_word_occurance) -> set:
-    word_freq_dict = dict()
+    word_freq_dict = Counter()
 
     for review in training_reviews:
         for word in review.split():
             if len(word) >= min_word_length:
-                if word in word_freq_dict.keys():
-                    word_freq_dict[word] += 1
-                else:
-                    word_freq_dict[word] = 1
+                word_freq_dict.update(word)
 
     new_dict = dict()
 
@@ -61,7 +59,7 @@ def count_word_in_review_frequency(review_list: pd.Series, word_set: set) -> Cou
     for review in review_list:
         for word in word_set:
             if word in review:
-                word_freq_dict[word] += 1
+                word_freq_dict.update(word)
 
     return word_freq_dict
 
@@ -80,16 +78,43 @@ def calculate_likelihood(word_freq: Counter) -> dict:
     return word_likelihood
 
 
-def calculate_priors(full_dataset: pd.Series, subset: pd.Series):
+def calculate_priors(full_dataset: pd.Series, subset: pd.Series) -> float:
     return len(subset) / len(full_dataset)
 
 
+def classify_text(review_text: str, positive_likelihood: dict, negative_likelihood: dict,
+                  positive_prior: float, negative_prior: float):
+    new_text_words = review_text.lower().replace("[^A-Za-z0-9\s]+", "").split()
+
+    positive_log = 0
+
+    for word in new_text_words:
+        if word in positive_likelihood.keys():
+            positive_log += math.log(positive_likelihood[word])
+
+    negative_log = 0
+
+    for word in new_text_words:
+        if word in negative_likelihood.keys():
+            negative_log += math.log(negative_likelihood[word])
+
+    likelihood_ratio = math.exp(positive_log - negative_log)
+    prior_ratio = math.exp(math.log(negative_prior) - math.log(positive_prior))
+
+    if likelihood_ratio > prior_ratio:
+        print("Review is positive")
+    else:
+        print("Review is negative")
+
+
 def main():
+    print("This should take about 40 seconds to run completely")
+
     review_train_data, label_train_data, review_test_data, label_test_data = split_data()
 
     review_train_data = clean_data(review_train_data)
 
-    word_set = count_training_words(review_train_data, 4, 100)
+    word_set = count_training_words(review_train_data, 3, 100)
 
     positive_training_reviews = review_train_data[label_train_data == "positive"]
     negative_training_reviews = review_train_data[label_train_data == "negative"]
@@ -103,11 +128,7 @@ def main():
     positive_prior = calculate_priors(review_train_data, positive_training_reviews)
     negative_prior = calculate_priors(review_train_data, negative_training_reviews)
 
-    print(positive_likelihood)
-    print(negative_likelihood)
-
-    print(positive_prior)
-    print(negative_prior)
+    classify_text("This loved this movie", positive_likelihood, negative_likelihood, positive_prior, negative_prior)
 
 
 main()
