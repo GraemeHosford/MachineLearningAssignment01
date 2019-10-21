@@ -40,7 +40,6 @@ def count_training_words(training_reviews: pd.Series, min_word_length, min_word_
         words = set(filter(lambda x: len(x) >= min_word_length, review.split()))
         word_freq_dict.update(words)
 
-    print(len(word_freq_dict))
     words = set()
 
     for key, value in word_freq_dict.items():
@@ -70,7 +69,7 @@ def calculate_likelihood(word_freq: Counter) -> dict:
     total = sum(word_freq.values())
 
     for word in word_freq.keys():
-        word_likelihood[word] = (word_freq[word] + smoothing) / (total + smoothing)
+        word_likelihood[word] = (word_freq[word] + smoothing) / (total + (len(word_freq) + smoothing))
 
     return word_likelihood
 
@@ -110,6 +109,8 @@ def main():
 
     positive_training_reviews = review_train_data[label_train_data == "positive"]
     negative_training_reviews = review_train_data[label_train_data == "negative"]
+    positive_test_reviews = review_test_data[label_test_data == "positive"]
+    negative_test_reviews = review_test_data[label_test_data == "negative"]
 
     positive_word_freq_dict = count_word_in_review_frequency(positive_training_reviews, word_set)
     negative_word_freq_dict = count_word_in_review_frequency(negative_training_reviews, word_set)
@@ -136,11 +137,23 @@ def main():
         else:
             num_negative += 1
 
-    print("Number of positive reviews: ", num_positive)
-    print("Number of negative reviews: ", num_negative)
-
-    percent_pos = num_positive / len(positive_training_reviews) * 100
+    percent_pos = num_positive / len(positive_test_reviews) * 100
 
     print("% positive =", percent_pos)
+
+    num_positive = 0
+    num_negative = 0
+    for index, review in negative_training_reviews.iteritems():
+        if classify_text(review, positive_likelihood, negative_likelihood, positive_prior, negative_prior):
+            num_positive += 1
+        else:
+            num_negative += 1
+
+    percent_neg = num_negative / len(negative_test_reviews) * 100
+
+    print("% positive =", percent_neg)
+
+    print("Average % correct =", (percent_pos + percent_neg) / 2)
+
 
 main()
