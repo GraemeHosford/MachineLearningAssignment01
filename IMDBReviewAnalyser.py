@@ -80,7 +80,7 @@ def calculate_priors(full_dataset: pd.Series, subset: pd.Series) -> float:
 
 
 def classify_text(review_text: str, positive_likelihood: dict, negative_likelihood: dict,
-                  positive_prior: float, negative_prior: float):
+                  positive_prior: float, negative_prior: float) -> bool:
     new_text_words = review_text.lower().replace("[^A-Za-z0-9\s]+", "").split()
 
     positive_log = 0
@@ -98,10 +98,7 @@ def classify_text(review_text: str, positive_likelihood: dict, negative_likeliho
     likelihood_ratio = math.exp(positive_log - negative_log)
     prior_ratio = math.exp(math.log(negative_prior) - math.log(positive_prior))
 
-    if likelihood_ratio > prior_ratio:
-        print("Review is positive")
-    else:
-        print("Review is negative")
+    return likelihood_ratio > prior_ratio
 
 
 def main():
@@ -109,9 +106,7 @@ def main():
 
     review_train_data = clean_data(review_train_data)
 
-    word_set = count_training_words(review_train_data, 3, 20)
-
-    print(word_set)
+    word_set = count_training_words(review_train_data, 1, 1)
 
     positive_training_reviews = review_train_data[label_train_data == "positive"]
     negative_training_reviews = review_train_data[label_train_data == "negative"]
@@ -125,7 +120,27 @@ def main():
     positive_prior = calculate_priors(review_train_data, positive_training_reviews)
     negative_prior = calculate_priors(review_train_data, negative_training_reviews)
 
-    classify_text("This movie was really good", positive_likelihood, negative_likelihood, positive_prior,
-                  negative_prior)
+    is_positive = classify_text("This movie was really great", positive_likelihood, negative_likelihood, positive_prior,
+                                negative_prior)
+
+    if is_positive:
+        print("Review is positive")
+    else:
+        print("Review is negative")
+
+    num_positive = 0
+    num_negative = 0
+    for index, review in positive_training_reviews.iteritems():
+        if classify_text(review, positive_likelihood, negative_likelihood, positive_prior, negative_prior):
+            num_positive += 1
+        else:
+            num_negative += 1
+
+    print("Number of positive reviews: ", num_positive)
+    print("Number of negative reviews: ", num_negative)
+
+    percent_pos = num_positive / len(positive_training_reviews) * 100
+
+    print("% positive =", percent_pos)
 
 main()
