@@ -29,25 +29,25 @@ def split_data():
 
 
 def clean_data(review_data: pd.Series) -> pd.Series:
-    review_data.replace(to_replace="[^A-Za-z0-9\s]+", value="", regex=True, inplace=True)
+    review_data.replace(to_replace="[^A-Za-z0-9\\s]+", value="", regex=True, inplace=True)
     return review_data.apply(lambda x: x.lower())
 
 
 def count_training_words(training_reviews: pd.Series, min_word_length, min_word_occurance) -> set:
     word_freq_dict = Counter()
 
-    for review in training_reviews:
-        for word in review.split():
-            if len(word) >= min_word_length:
-                word_freq_dict.update(word)
+    for index, review in training_reviews.iteritems():
+        words = set(filter(lambda x: len(x) >= min_word_length, review.split()))
+        word_freq_dict.update(words)
 
-    new_dict = dict()
+    print(len(word_freq_dict))
+    words = set()
 
     for key, value in word_freq_dict.items():
         if value >= min_word_occurance:
-            new_dict[key] = value
+            words.add(key)
 
-    return set(new_dict.keys())
+    return words
 
 
 def count_word_in_review_frequency(review_list: pd.Series, word_set: set) -> Counter:
@@ -57,9 +57,8 @@ def count_word_in_review_frequency(review_list: pd.Series, word_set: set) -> Cou
         word_freq_dict[k] = 0
 
     for review in review_list:
-        for word in word_set:
-            if word in review:
-                word_freq_dict.update(word)
+        words = set(review.split())
+        word_freq_dict.update(set.intersection(words, word_set))
 
     return word_freq_dict
 
@@ -68,9 +67,7 @@ def calculate_likelihood(word_freq: Counter) -> dict:
     word_likelihood = dict()
     smoothing = 1
 
-    total = 0
-    for value in word_freq.values():
-        total += value
+    total = sum(word_freq.values())
 
     for word in word_freq.keys():
         word_likelihood[word] = (word_freq[word] + smoothing) / (total + smoothing)
@@ -89,14 +86,14 @@ def classify_text(review_text: str, positive_likelihood: dict, negative_likeliho
     positive_log = 0
 
     for word in new_text_words:
-        if word in positive_likelihood.keys():
-            positive_log += math.log(positive_likelihood[word])
+        if positive_likelihood.get(word, 0) > 0:
+            positive_log += math.log(positive_likelihood.get(word, 0))
 
     negative_log = 0
 
     for word in new_text_words:
-        if word in negative_likelihood.keys():
-            negative_log += math.log(negative_likelihood[word])
+        if negative_likelihood.get(word, 0) > 0:
+            negative_log += math.log(negative_likelihood.get(word, 0))
 
     likelihood_ratio = math.exp(positive_log - negative_log)
     prior_ratio = math.exp(math.log(negative_prior) - math.log(positive_prior))
@@ -108,13 +105,13 @@ def classify_text(review_text: str, positive_likelihood: dict, negative_likeliho
 
 
 def main():
-    print("This should take about 40 seconds to run completely")
-
     review_train_data, label_train_data, review_test_data, label_test_data = split_data()
 
     review_train_data = clean_data(review_train_data)
 
-    word_set = count_training_words(review_train_data, 3, 100)
+    word_set = count_training_words(review_train_data, 3, 20)
+
+    print(word_set)
 
     positive_training_reviews = review_train_data[label_train_data == "positive"]
     negative_training_reviews = review_train_data[label_train_data == "negative"]
@@ -128,7 +125,7 @@ def main():
     positive_prior = calculate_priors(review_train_data, positive_training_reviews)
     negative_prior = calculate_priors(review_train_data, negative_training_reviews)
 
-    classify_text("This loved this movie", positive_likelihood, negative_likelihood, positive_prior, negative_prior)
-
+    classify_text("This movie was really good", positive_likelihood, negative_likelihood, positive_prior,
+                  negative_prior)
 
 main()
