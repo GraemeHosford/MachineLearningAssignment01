@@ -115,6 +115,8 @@ def evaluate_results(positive_training_dataset: pd.Series, negative_training_dat
     print("Number of positive test reviews:", pos_test_length)
     print("Number of negative test reviews:", neg_test_length)
 
+    full_label_dataset = positive_label_dataset.append(negative_label_dataset)
+
     kfolds = model_selection.KFold(n_splits=4)
     accuracies_for_lengths = []
 
@@ -147,7 +149,15 @@ def evaluate_results(positive_training_dataset: pd.Series, negative_training_dat
                 else:
                     results.append("negative")
 
-            accuracy = metrics.accuracy_score(positive_label_dataset, results)
+            for index, review in negative_test_dataset.iteritems():
+                result = classify_text(review, positive_likelihood, negative_likelihood,
+                                       positive_prior, negative_prior)
+                if result:
+                    results.append("positive")
+                else:
+                    results.append("negative")
+
+            accuracy = metrics.accuracy_score(full_label_dataset, results)
 
             average_accuracies.append(accuracy)
             accuracy_percent = accuracy * 100
@@ -191,9 +201,16 @@ def evaluate_results(positive_training_dataset: pd.Series, negative_training_dat
         else:
             results.append("negative")
 
-    length_test_data = len(positive_test_dataset)
-    accuracy = metrics.accuracy_score(positive_label_dataset + negative_label_dataset, results)
-    confusion_matrix = metrics.confusion_matrix(positive_label_dataset + negative_label_dataset, results)
+    for index, review in negative_test_dataset.iteritems():
+        result = classify_text(review, positive_likelihood, negative_likelihood, positive_prior, negative_prior)
+        if result:
+            results.append("positive")
+        else:
+            results.append("negative")
+
+    length_test_data = len(positive_test_dataset) + len(negative_test_dataset)
+    accuracy = metrics.accuracy_score(full_label_dataset, results)
+    confusion_matrix = metrics.confusion_matrix(full_label_dataset, results)
     percentage_true_pos = (confusion_matrix[0, 0] / length_test_data) * 100
     percentage_false_pos = (confusion_matrix[0, 1] / length_test_data) * 100
     percentage_true_neg = (confusion_matrix[1, 1] / length_test_data) * 100
